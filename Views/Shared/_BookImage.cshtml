@@ -1,0 +1,22 @@
+﻿@model WebApplication1.Models.Book
+@{
+    var photoPath = (Model != null && !string.IsNullOrEmpty(Model.Photo)) ? "/images/books/" + Model.Photo : "images/placeholder.png";
+    var altTag = (Model != null && !string.IsNullOrEmpty(Model.Photo)) ? Model.Title : "Book Image";
+}
+
+<img id="photo-preview" class="img-thumbnail" src="@photoPath" alt="@altTag" />
+
+<script>
+    function previewImage(event){
+        var input = event.target;
+        if(input.files && input.files[0]){
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const imagePreview = document.querySelector("#photo-preview");
+                imagePreview.src = e.target.result;
+                imagePreview.style.display = "block";
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
