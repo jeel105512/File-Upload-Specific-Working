@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using WebApplication1.Data;
 using WebApplication1.Models;
 
@@ -122,6 +123,30 @@ namespace WebApplication1.Controllers
                 // check if a file is uploaded
                 if(Photo != null && Photo.Length > 0)
                 {
+                    // Delete the old image file
+                    if (!string.IsNullOrEmpty(book.Photo))
+                    {
+                        string imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "books", book.Photo);
+                        if (System.IO.File.Exists(imagePath))
+                        {
+                            System.IO.File.Delete(imagePath);
+                        }
+                    }
+
+                    // Generate a unique file name for the new image
+                    string newFileName = Guid.NewGuid().ToString() + Path.GetExtension(Photo.FileName);
+                    string newImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "books", newFileName);
+
+                    // Save the new image file
+                    using (var fileStream = new FileStream(newImagePath, FileMode.Create))
+                    {
+                        await Photo.CopyToAsync(fileStream);
+                    }
+
+                    // Update the book's PhotoFileName property with the new file name
+                    book.Photo= newFileName;
+
+                    // ---------------------------------------------
                     byte[] fileBytes;
                     using (var memoryStream = new MemoryStream())
                     {
@@ -135,6 +160,7 @@ namespace WebApplication1.Controllers
                         ViewData["LibraryId"] = new SelectList(_context.Libraries, "Id", "Location", book.LibraryId);
                         return View(book);
                     }
+                    // ---------------------------------------------
                 }
 
                 try
@@ -189,11 +215,25 @@ namespace WebApplication1.Controllers
                 return Problem("Entity set 'ApplicationDbContext.Books'  is null.");
             }
             var book = await _context.Books.FindAsync(id);
-            if (book != null)
+            if (book == null)
             {
-                _context.Books.Remove(book);
+                return NotFound();
             }
-            
+            //if (book != null)
+            //{
+            //    _context.Books.Remove(book);
+            //}
+
+            // Delete the associated image file
+            if (!string.IsNullOrEmpty(book.Photo)){
+                string imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "books", book.Photo);
+                if (System.IO.File.Exists(imagePath))
+                {
+                    System.IO.File.Delete(imagePath);
+                }
+            }
+
+            _context.Books.Remove(book);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
