@@ -123,29 +123,6 @@ namespace WebApplication1.Controllers
                 // check if a file is uploaded
                 if(Photo != null && Photo.Length > 0)
                 {
-                    // Delete the old image file
-                    if (!string.IsNullOrEmpty(book.Photo))
-                    {
-                        string imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "books", book.Photo);
-                        if (System.IO.File.Exists(imagePath))
-                        {
-                            System.IO.File.Delete(imagePath);
-                        }
-                    }
-
-                    // Generate a unique file name for the new image
-                    string newFileName = Guid.NewGuid().ToString() + Path.GetExtension(Photo.FileName);
-                    string newImagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "books", newFileName);
-
-                    // Save the new image file
-                    using (var fileStream = new FileStream(newImagePath, FileMode.Create))
-                    {
-                        await Photo.CopyToAsync(fileStream);
-                    }
-
-                    // Update the book's PhotoFileName property with the new file name
-                    book.Photo= newFileName;
-
                     // ---------------------------------------------
                     byte[] fileBytes;
                     using (var memoryStream = new MemoryStream())
@@ -161,11 +138,27 @@ namespace WebApplication1.Controllers
                         return View(book);
                     }
                     // ---------------------------------------------
+
+                    // Delete the old image file
+                    if (!string.IsNullOrEmpty(book.Photo))
+                    {
+                        string imagePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", "books", book.Photo);
+                        if (System.IO.File.Exists(imagePath))
+                        {
+                            System.IO.File.Delete(imagePath);
+                        }
+                    }
+
+                    // Upload the new photo and get the file name
+                    string newFileName = await UploadPhoto(Photo);
+
+                    // Update the book's PhotoFileName property with the new file name
+                    book.Photo = newFileName;
                 }
 
                 try
                 {
-                    book.Photo = await UploadPhoto(Photo);
+                    //book.Photo = await UploadPhoto(Photo);
                     _context.Update(book);
                     await _context.SaveChangesAsync();
                 }
@@ -244,7 +237,7 @@ namespace WebApplication1.Controllers
         }
 
         // Helper methods
-        private async Task<string?> UploadPhoto(IFormFile Photo)
+        private async Task<string> UploadPhoto(IFormFile Photo)
         {
             if (Photo == null) return null;
 
